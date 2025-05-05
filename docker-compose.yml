@@ -1,0 +1,51 @@
+version: '3.8' # Versi skema Docker Compose
+
+services:
+  # Nama service (tetap 'webserver' seperti yang Anda gunakan)
+  webserver:
+    # Instruksi untuk membangun image dari Dockerfile di direktori saat ini (.)
+    # Ini masih diperlukan untuk membuat base image dengan Node & dependencies
+    build:
+      context: .
+      # (Opsional) Anda bisa menambahkan target stage jika punya multi-stage Dockerfile
+      # target: development
+    # Nama container yang akan dibuat (opsional)
+    container_name: server_html_saya_dev # Ganti nama sedikit untuk membedakan dari production (opsional)
+    
+    # *** PERUBAHAN UTAMA UNTUK DEVELOPMENT ***
+
+    # 1. Override command untuk menjalankan nodemon menggunakan script dari package.json
+    command: npm run dev
+
+    # 2. Working directory di dalam container (pastikan ini sama dengan WORKDIR di Dockerfile Anda)
+    # Jika Dockerfile Anda tidak punya WORKDIR, sebaiknya tambahkan WORKDIR /app
+    working_dir: /app # Asumsi WORKDIR Anda adalah /app
+
+    # 3. Volumes untuk sinkronisasi kode dan isolasi node_modules
+    volumes:
+      # Mount direktori proyek lokal Anda ke /app di dalam container
+      # Semua perubahan kode lokal akan langsung terlihat di /app container
+      - .:/app
+      # Gunakan 'named volume' untuk /app/node_modules di container.
+      # Ini mencegah folder node_modules lokal (jika ada) menimpa
+      # node_modules yang diinstal saat build image di dalam container.
+      - node_modules_volume:/app/node_modules
+
+    # Pemetaan port: [PORT_DI_HOST_ANDA]:[PORT_DI_DALAM_CONTAINER]
+    # Tetap gunakan port yang Anda inginkan (8000 di host, 3000 di container)
+    ports:
+      - "8000:3000" # Anda akan akses via http://localhost:8000
+
+    # 4. (Opsional tapi direkomendasikan) Set environment variable untuk development
+    environment:
+      - NODE_ENV=development
+      # Tambahkan variabel lain jika server.js Anda memerlukannya
+      # - PORT=3000 # Bisa juga didefinisikan di sini jika server.js membaca process.env.PORT
+
+    # Kebijakan restart: Anda bisa membiarkannya atau menghapusnya untuk dev,
+    # karena Anda biasanya mengontrol start/stop via VS Code atau docker-compose manual.
+    restart: unless-stopped
+
+# 5. Definisikan named volume yang digunakan di atas
+volumes:
+  node_modules_volume: # Nama volume harus sama dengan yang digunakan di services.webserver.volumes
